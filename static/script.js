@@ -41,3 +41,28 @@ document.addEventListener('DOMContentLoaded', function () {
             });
     }
 });
+
+$(document).ready(function () {
+    $('#send-upload').click(function (event) {
+        event.preventDefault();
+        var resumo = $('#resumo').val();
+        var url = $('#url').val();
+        var conteudo = $('#conteudo').val();
+
+        $.ajax({
+            type: 'POST',
+            url: '/extrair',
+            data: { url: url, resumo: resumo, conteudo: conteudo },
+            success: function (response) {
+                if (response.status === 'sucesso') {
+                    $('#text-result').html('<p style="color: green;">' + response.mensagem + '</p>');
+                } else {
+                    $('#text-result').html('<p style="color: red;">' + response.mensagem + '</p>');
+                }
+            },
+            error: function () {
+                $('#text-result').html('<p style="color: red;">Erro ao enviar solicitação.</p>');
+            }
+        });
+    });
+});

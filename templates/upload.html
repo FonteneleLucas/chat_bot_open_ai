@@ -1,0 +1,37 @@
+<!DOCTYPE html>
+<html lang="en">
+    <head>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>Extrair Texto do Corpo da Página</title>
+        <link rel="stylesheet"
+            href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css">
+        <link rel="stylesheet"
+            href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.3/css/all.min.css">
+    </head>
+    <body>
+        <div class="container">
+            <div class="chat-container">
+                <div class="form-group">
+                    <input type="text" class="form-control mt-3" autofocus
+                        id="resumo"
+                        placeholder="Insira um resumo da página">
+                    <input type="text" class="form-control mt-3"
+                        id="url"
+                        placeholder="Insira um link para recuperar o conteúdo">
+                    <textarea type="text" class="form-control mt-3"
+                        id="conteudo"
+                        placeholder="Insira um conteúdo"></textarea>
+                    <div id="text-result">
+                    </div>
+                    <div class="divBtn">
+                        <button class="btn btn-dark mt-3 sendBtn"
+                            id="send-upload">Enviar</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+        <script src="{{ url_for('static', filename='script.js') }}"></script>
+    </body>
+</html>

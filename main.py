@@ -1,4 +1,7 @@
+import re
+from bs4 import BeautifulSoup
 from flask import Flask, render_template, request, jsonify
+import requests
 from scipy.spatial.distance import cosine
 from openai import OpenAI
 import os
@@ -12,11 +15,16 @@ client = OpenAI(api_key=os.environ.get('OPENAI_API_KEY'))
 
 app = Flask(__name__)
 df = None
+df_input = pd.DataFrame(columns=['URL', 'Resumo', 'Conteúdo'])
 
 @app.route('/')
 def index():
     carrega_csv()
     return render_template('index.html')
+
+@app.route('/upload')
+def upload():
+    return render_template('upload.html')
 
 @app.route('/chat', methods=['POST'])
 def chat():
@@ -24,6 +32,25 @@ def chat():
     results = search(df, user_message, n=1, pprint=False)
     response = getResponses(user_message, results.iloc[0])
     return jsonify({'bot_message': response})
+
+@app.route('/extrair', methods=['POST'])
+def extrair():
+    url = request.form['url']
+    resumo = request.form['resumo']
+    conteudo = request.form['conteudo']
+
+    texto = None
+    if(conteudo):
+        texto = conteudo
+    else:
+        texto = extrair_texto_do_body(url)
+    
+    if texto:
+        atualizar_dataframe(url, texto, resumo)
+        return jsonify({'status': 'sucesso', 'mensagem': 'Texto recuperado e salvo com sucesso no Dataset CSV.'})
+    else:
+        return jsonify({'status': 'falha', 'mensagem': 'Falha ao recuperar o texto da página.'})
+
 
 def carrega_csv():
     global df
@@ -64,6 +91,29 @@ def getResponses(pergunta, _results):
         temperature=0,
     )
     return response.choices[0].message.content
+
+
+
+def extrair_texto_do_body(url):
+    resposta = requests.get(url)
+    if resposta.status_code == 200:
+        soup = BeautifulSoup(resposta.content, 'html.parser')
+        texto_do_body = soup.body.get_text()
+        texto_do_body = texto_do_body.replace('\n', ' ')
+        texto_do_body = texto_do_body.replace('.', '. ')
+        
+        return texto_do_body
+    else:
+        print("Falha ao recuperar a página:", resposta.status_code)
+        return None
+
+def atualizar_dataframe(url, texto, resumo):
+    global df_input
+
+    new_row = {'URL': url, 'Resumo': resumo, 'Conteúdo': texto}
+    df_input = pd.concat([df_input, pd.DataFrame([new_row])], ignore_index=True)
+    df_input.to_csv('dados.csv', index=False)
+
 
 if __name__ == '__main__':
     app.run(debug=True)
