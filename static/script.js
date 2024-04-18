@@ -65,4 +65,24 @@ $(document).ready(function () {
             }
         });
     });
+
+    $('#send-update').click(function (event) {
+        event.preventDefault();
+
+        $.ajax({
+            type: 'POST',
+            url: '/atualizar',
+            success: function (response) {
+                if (response.status === 'sucesso') {
+                    $('#text-result').html('<p style="color: green;">' + response.mensagem + '</p>');
+                } else {
+                    $('#text-result').html('<p style="color: red;">' + response.mensagem + '</p>');
+                }
+            },
+            error: function () {
+                $('#text-result').html('<p style="color: red;">Erro ao enviar solicitação.</p>');
+            }
+        });
+    });
 });
+

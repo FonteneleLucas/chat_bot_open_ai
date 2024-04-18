@@ -1,4 +1,5 @@
 import re
+import traceback
 from bs4 import BeautifulSoup
 from flask import Flask, render_template, request, jsonify
 import requests
@@ -15,7 +16,11 @@ client = OpenAI(api_key=os.environ.get('OPENAI_API_KEY'))
 
 app = Flask(__name__)
 df = None
-df_input = pd.DataFrame(columns=['URL', 'Resumo', 'Conteúdo'])
+
+try:
+    df_input = pd.read_csv("dados.csv")
+except FileNotFoundError:
+    df_input = pd.DataFrame(columns=['URL', 'Resumo', 'Conteudo'])
 
 @app.route('/')
 def index():
@@ -50,6 +55,29 @@ def extrair():
         return jsonify({'status': 'sucesso', 'mensagem': 'Texto recuperado e salvo com sucesso no Dataset CSV.'})
     else:
         return jsonify({'status': 'falha', 'mensagem': 'Falha ao recuperar o texto da página.'})
+    
+@app.route('/atualizar', methods=['POST'])
+def atualizar_embbeding():
+    try:
+        global df_input
+        df_input["combined"] = (
+            "Resumo: " + df_input.Resumo.str.strip() + "; Conteudo: "
+            + df_input.Conteudo.str.strip() + "; URL: " + df_input.URL.str.strip()
+        )
+        print("combined gerado")
+
+        df_input['embedding'] = df_input.combined.apply(lambda x: get_embedding(x, model='text-embedding-3-small'))
+        print("embedding gerado")
+
+        global df
+        df = pd.concat([df, df_input], ignore_index=True)
+        df.to_csv('embedded.csv', index=False)
+
+        df_input = None
+        return jsonify({'status': 'sucesso', 'mensagem': 'Embedded gerado com sucesso!'})
+    except Exception as e:  # Captura a exceção
+        traceback.print_exc()  # Imprime o rastreamento da exceção
+        return jsonify({'status': 'falha', 'mensagem': 'Falha ao gerar embedded'})
 
 
 def carrega_csv():
@@ -110,7 +138,7 @@ def extrair_texto_do_body(url):
 def atualizar_dataframe(url, texto, resumo):
     global df_input
 
-    new_row = {'URL': url, 'Resumo': resumo, 'Conteúdo': texto}
+    new_row = {'URL': url, 'Resumo': resumo, 'Conteudo': texto}
     df_input = pd.concat([df_input, pd.DataFrame([new_row])], ignore_index=True)
     df_input.to_csv('dados.csv', index=False)
 
