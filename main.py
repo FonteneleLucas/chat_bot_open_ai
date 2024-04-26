@@ -82,8 +82,8 @@ def atualizar_embbeding():
 
         df_input = None
         return jsonify({'status': 'sucesso', 'mensagem': 'Embedded gerado com sucesso!'})
-    except Exception as e:  # Captura a exceção
-        traceback.print_exc()  # Imprime o rastreamento da exceção
+    except Exception as e: 
+        traceback.print_exc() 
         return jsonify({'status': 'falha', 'mensagem': 'Falha ao gerar embedded'})
 
 
