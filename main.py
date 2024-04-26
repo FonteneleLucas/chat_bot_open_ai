@@ -15,6 +15,7 @@ ssl._create_default_https_context = ssl._create_unverified_context
 client = OpenAI(api_key=os.environ.get('OPENAI_API_KEY'))
 
 app = Flask(__name__)
+pd.set_option('display.max_colwidth', None)
 df = None
 
 try:
@@ -51,6 +52,7 @@ def extrair():
         texto = extrair_texto_do_body(url)
     
     if texto:
+        texto = texto.replace("\n", " ")
         atualizar_dataframe(url, texto, resumo)
         return jsonify({'status': 'sucesso', 'mensagem': 'Texto recuperado e salvo com sucesso no Dataset CSV.'})
     else:
@@ -60,9 +62,14 @@ def extrair():
 def atualizar_embbeding():
     try:
         global df_input
+        URL = df_input.URL
+
+        if URL.empty:
+            URL = ""
+
         df_input["combined"] = (
             "Resumo: " + df_input.Resumo.str.strip() + "; Conteudo: "
-            + df_input.Conteudo.str.strip() + "; URL: " + df_input.URL.str.strip()
+            + df_input.Conteudo.str.strip() + "; URL: " + URL
         )
         print("combined gerado")
 
@@ -83,19 +90,26 @@ def atualizar_embbeding():
 def carrega_csv():
     global df
     df = pd.read_csv('embedded.csv')
-    df['embedding'] = df.embedding.apply(eval).apply(np.array)
+
+    df['embedding'] = df['embedding'].apply(lambda x: np.array(x.strip('[]').split(), dtype=float))
+
     print("CSV carregado")
 
 def get_embedding(text, model="text-embedding-3-small"):
+    text = str(text)
     text = text.replace("\n", " ")
-    return client.embeddings.create(input=[text], model=model).data[0].embedding
+    
+    cut_dim = client.embeddings.create(input=[text], model=model).data[0].embedding[:256]
+    return np.array(normalize_l2(cut_dim))
 
 def search(df, product_description, n=3, pprint=True):
     if df is None:
         carrega_csv()
 
     embedding = get_embedding(product_description, model="text-embedding-3-small")
+
     df["similarity"] = df["embedding"].apply(lambda x: cosine(embedding, x))
+    
 
     results = (
         df.sort_values("similarity", ascending=True)
@@ -138,10 +152,23 @@ def extrair_texto_do_body(url):
 def atualizar_dataframe(url, texto, resumo):
     global df_input
 
+    if url == None:
+        url = ""
+
     new_row = {'URL': url, 'Resumo': resumo, 'Conteudo': texto}
     df_input = pd.concat([df_input, pd.DataFrame([new_row])], ignore_index=True)
     df_input.to_csv('dados.csv', index=False)
 
+def normalize_l2(x):
+    x = np.array(x)
+    if x.ndim == 1:
+        norm = np.linalg.norm(x)
+        if norm == 0:
+            return x
+        return x / norm
+    else:
+        norm = np.linalg.norm(x, 2, axis=1, keepdims=True)
+        return np.where(norm == 0, x, x / norm)
 
 if __name__ == '__main__':
     app.run(debug=True)
